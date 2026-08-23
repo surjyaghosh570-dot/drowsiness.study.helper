@@ -1,0 +1,2799 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#06111f">
+<meta name="description" content="Study Guardian AI - real-time student drowsiness detection">
+
+<title>Study Guardian AI</title>
+
+<script type="module">
+import {
+  FaceLandmarker,
+  FilesetResolver
+} from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/vision_bundle.mjs";
+
+window.FaceLandmarker = FaceLandmarker;
+window.FilesetResolver = FilesetResolver;
+window.dispatchEvent(new Event("mediapipe-ready"));
+</script>
+
+<style>
+*{box-sizing:border-box}
+
+:root{
+  --bg:#050b14;
+  --panel:#0b1625;
+  --panel2:#0f1d2e;
+  --line:#20354c;
+  --text:#f7fbff;
+  --muted:#91a4b9;
+  --blue:#38bdf8;
+  --green:#34d399;
+  --yellow:#facc15;
+  --orange:#fb923c;
+  --red:#fb4b5b;
+}
+
+body{
+  margin:0;
+  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:
+    radial-gradient(circle at 10% 0%,#12345a 0,transparent 35%),
+    radial-gradient(circle at 90% 100%,#172342 0,transparent 35%),
+    var(--bg);
+  color:var(--text);
+  min-height:100vh;
+}
+
+.app{
+  width:min(1180px,94%);
+  margin:auto;
+  padding:20px 0 45px;
+}
+
+header{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:18px;
+}
+
+.logo{
+  font-size:25px;
+  font-weight:900;
+}
+
+.tag{
+  color:var(--muted);
+  font-size:12px;
+  margin-top:3px;
+}
+
+.online{
+  background:#09261e;
+  border:1px solid #14563f;
+  color:var(--green);
+  padding:8px 12px;
+  border-radius:30px;
+  font-size:11px;
+  font-weight:800;
+}
+
+.card{
+  background:rgba(11,22,37,.95);
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:20px;
+  box-shadow:0 18px 60px rgba(0,0,0,.22);
+}
+
+.hero{
+  display:grid;
+  grid-template-columns:1.35fr .65fr;
+  gap:25px;
+  align-items:center;
+  padding:34px;
+  margin-bottom:18px;
+}
+
+.badge{
+  display:inline-block;
+  padding:6px 10px;
+  border-radius:30px;
+  background:#08243a;
+  color:var(--blue);
+  font-size:10px;
+  font-weight:900;
+  letter-spacing:1px;
+}
+
+h1{
+  font-size:clamp(40px,6vw,70px);
+  line-height:.94;
+  letter-spacing:-3px;
+  margin:16px 0;
+}
+
+.hero p{
+  max-width:650px;
+  color:var(--muted);
+  line-height:1.65;
+}
+
+button{
+  border:0;
+  border-radius:12px;
+  padding:13px 18px;
+  font-weight:900;
+  cursor:pointer;
+  transition:.18s;
+}
+
+button:hover:not(:disabled){
+  transform:translateY(-2px);
+}
+
+button:disabled{
+  opacity:.45;
+  cursor:not-allowed;
+}
+
+.primary{
+  background:var(--blue);
+  color:#02111b;
+}
+
+.secondary{
+  background:#16263a;
+  color:#fff;
+  border:1px solid #2b4058;
+  margin-left:7px;
+}
+
+.statusWrap{
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+
+.statusCircle{
+  width:175px;
+  height:175px;
+  border-radius:50%;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  background:#07131f;
+  border:3px solid var(--green);
+  color:var(--green);
+  text-align:center;
+}
+
+.statusCircle.warn{
+  border-color:var(--yellow);
+  color:var(--yellow);
+}
+
+.statusCircle.danger{
+  border-color:var(--red);
+  color:var(--red);
+  animation:pulse .75s infinite;
+}
+
+.statusIcon{
+  font-size:38px;
+  margin-bottom:6px;
+}
+
+.statusCircle strong{
+  font-size:17px;
+}
+
+.statusText{
+  color:var(--muted);
+  text-align:center;
+  max-width:250px;
+  font-size:12px;
+  line-height:1.5;
+  margin-top:12px;
+}
+
+@keyframes pulse{
+  50%{transform:scale(1.06)}
+}
+
+.grid{
+  display:grid;
+  grid-template-columns:1.35fr .65fr;
+  gap:18px;
+  margin-bottom:18px;
+}
+
+.head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:14px;
+}
+
+.head h2{
+  margin:0;
+  font-size:18px;
+}
+
+.head small{
+  display:block;
+  color:var(--muted);
+  margin-top:4px;
+}
+
+.pill{
+  background:#182638;
+  color:#91a4b9;
+  padding:7px 10px;
+  border-radius:30px;
+  font-size:10px;
+  font-weight:800;
+}
+
+.pill.good{
+  background:#09261e;
+  color:var(--green);
+}
+
+.pill.bad{
+  background:#34171d;
+  color:#ff8792;
+}
+
+.cameraBox{
+  position:relative;
+  overflow:hidden;
+  background:#02070c;
+  border-radius:15px;
+  aspect-ratio:16/10;
+}
+
+video{
+  width:100%;
+  height:100%;
+  display:block;
+  object-fit:cover;
+  transform:scaleX(-1);
+}
+
+#overlay{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  pointer-events:none;
+}
+
+.cameraOff{
+  position:absolute;
+  inset:0;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  flex-direction:column;
+  background:rgba(0,0,0,.68);
+  color:var(--muted);
+  text-align:center;
+}
+
+.cameraOff span{
+  font-size:44px;
+  margin-bottom:8px;
+}
+
+.tip{
+  margin-top:10px;
+  color:#71869d;
+  font-size:11px;
+  line-height:1.5;
+}
+
+.metric{
+  margin:16px 0;
+}
+
+.metricTop{
+  display:flex;
+  justify-content:space-between;
+  font-size:13px;
+  margin-bottom:7px;
+}
+
+.metricTop span{
+  color:#aebdcc;
+}
+
+.bar{
+  height:9px;
+  border-radius:20px;
+  background:#1a2a3c;
+  overflow:hidden;
+}
+
+.fill{
+  height:100%;
+  width:0%;
+  background:var(--blue);
+  transition:.15s;
+}
+
+.fill.red{
+  background:var(--red);
+}
+
+.row{
+  display:flex;
+  justify-content:space-between;
+  border-bottom:1px solid #1a2b3e;
+  padding:11px 0;
+  font-size:12px;
+}
+
+.row span{
+  color:#8498ad;
+}
+
+.stats{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:10px;
+  margin-bottom:18px;
+}
+
+.stat{
+  text-align:center;
+  background:#081421;
+  border:1px solid #1a2d43;
+  border-radius:15px;
+  padding:15px 8px;
+}
+
+.statIcon{
+  display:block;
+  font-size:20px;
+  margin-bottom:5px;
+}
+
+.stat strong{
+  display:block;
+  font-size:21px;
+}
+
+.stat small{
+  color:#73879c;
+  font-size:9px;
+}
+
+.calibration{
+  margin-bottom:18px;
+}
+
+.calBar{
+  height:10px;
+  background:#192b3f;
+  border-radius:20px;
+  overflow:hidden;
+}
+
+.calFill{
+  height:100%;
+  width:0%;
+  background:var(--blue);
+  transition:.2s;
+}
+
+.calText{
+  color:var(--muted);
+  font-size:11px;
+  margin-top:10px;
+}
+
+.log{
+  max-height:190px;
+  overflow:auto;
+}
+
+.logItem{
+  padding:9px 4px;
+  border-bottom:1px solid #18293b;
+  font-size:11px;
+  color:#aab9c8;
+}
+
+.clear{
+  padding:7px 10px;
+  background:transparent;
+  color:#8ca0b5;
+  border:1px solid #2a4058;
+  font-size:10px;
+}
+
+.privacy{
+  display:flex;
+  gap:12px;
+  align-items:flex-start;
+  margin-top:18px;
+  padding:15px;
+  border-radius:15px;
+  border:1px solid #175039;
+  background:#071b14;
+}
+
+.privacyIcon{
+  font-size:22px;
+}
+
+.privacy strong{
+  font-size:13px;
+}
+
+.privacy p{
+  margin:4px 0 0;
+  color:#819a8e;
+  font-size:10px;
+  line-height:1.5;
+}
+
+.error{
+  display:none;
+  margin-top:12px;
+  padding:11px;
+  border-radius:10px;
+  background:#34171d;
+  color:#ff9ca5;
+  font-size:11px;
+  line-height:1.5;
+}
+
+footer{
+  text-align:center;
+  color:#4e6278;
+  font-size:10px;
+  margin-top:20px;
+}
+
+@media(max-width:850px){
+  .hero,.grid{
+    grid-template-columns:1fr;
+  }
+
+  .hero{
+    padding:25px 20px;
+  }
+
+  .stats{
+    grid-template-columns:repeat(3,1fr);
+  }
+}
+
+@media(max-width:520px){
+  .app{
+    width:96%;
+    padding-top:12px;
+  }
+
+  header{
+    align-items:flex-start;
+    gap:10px;
+  }
+
+  h1{
+    font-size:43px;
+  }
+
+  .primary,.secondary{
+    width:100%;
+    margin:4px 0;
+  }
+
+  .stats{
+    grid-template-columns:repeat(2,1fr);
+  }
+
+  .statusCircle{
+    width:145px;
+    height:145px;
+  }
+
+  .cameraBox{
+    aspect-ratio:9/12;
+  }
+}
+</style>
+</head>
+
+<body>
+
+<div class="app">
+
+<header>
+  <div>
+    <div class="logo">👁️ Study Guardian AI</div>
+    <div class="tag">Real-time student drowsiness protection</div>
+  </div>
+
+  <div class="online">● LOCAL AI</div>
+</header>
+
+
+<section class="card hero">
+
+  <div>
+
+    <span class="badge">MULTI-SIGNAL DROWSINESS ENGINE</span>
+
+    <h1>Study.<br>Stay Awake.</h1>
+
+    <p>
+      Study Guardian analyzes facial landmarks, eye closure,
+      blink behavior and head position continuously during
+      your study session. It raises an alarm only after
+      sustained evidence of possible drowsiness.
+    </p>
+
+    <button id="startBtn" class="primary">
+      ▶ START STUDY SESSION
+    </button>
+
+    <button id="stopBtn" class="secondary" disabled>
+      ■ STOP
+    </button>
+
+    <div id="error" class="error"></div>
+
+  </div>
+
+
+  <div class="statusWrap">
+
+    <div id="statusCircle" class="statusCircle">
+
+      <div id="statusIcon" class="statusIcon">🎯</div>
+
+      <strong id="statusTitle">READY</strong>
+
+    </div>
+
+    <div id="statusText" class="statusText">
+      Press Start Study Session to begin.
+    </div>
+
+  </div>
+
+</section>
+
+
+<section class="grid">
+
+  <div class="card">
+
+    <div class="head">
+
+      <div>
+        <h2>📷 Live Camera</h2>
+        <small id="cameraState">Camera inactive</small>
+      </div>
+
+      <div id="facePill" class="pill">
+        ● FACE OFF
+      </div>
+
+    </div>
+
+
+    <div class="cameraBox">
+
+      <video
+        id="video"
+        autoplay
+        muted
+        playsinline
+      ></video>
+
+      <canvas id="overlay"></canvas>
+
+      <div id="cameraOff" class="cameraOff">
+
+        <span>📷</span>
+
+        <strong>Camera is off</strong>
+
+        <small>Press Start to activate</small>
+
+      </div>
+
+    </div>
+
+    <div class="tip">
+      💡 For best results: keep your face visible,
+      maintain reasonable lighting and sit approximately
+      40–80 cm from the camera.
+    </div>
+
+  </div>
+
+
+  <div class="card">
+
+    <div class="head">
+      <div>
+        <h2>🧠 AI Analysis</h2>
+        <small>Continuous facial analysis</small>
+      </div>
+    </div>
+
+
+    <div class="metric">
+
+      <div class="metricTop">
+        <span>Eye Openness</span>
+        <strong id="eyeValue">--</strong>
+      </div>
+
+      <div class="bar">
+        <div id="eyeFill" class="fill"></div>
+      </div>
+
+    </div>
+
+
+    <div class="metric">
+
+      <div class="metricTop">
+        <span>Drowsiness Risk</span>
+        <strong id="riskValue">0%</strong>
+      </div>
+
+      <div class="bar">
+        <div id="riskFill" class="fill red"></div>
+      </div>
+
+    </div>
+
+
+    <div class="row">
+      <span>Eye State</span>
+      <strong id="eyeState">Unknown</strong>
+    </div>
+
+    <div class="row">
+      <span>Head Pose</span>
+      <strong id="headPose">Unknown</strong>
+    </div>
+
+    <div class="row">
+      <span>Head Pitch</span>
+      <strong id="pitchValue">--</strong>
+    </div>
+
+    <div class="row">
+      <span>Head Yaw</span>
+      <strong id="yawValue">--</strong>
+    </div>
+
+    <div class="row">
+      <span>AI Confidence</span>
+      <strong id="confidence">--</strong>
+    </div>
+
+  </div>
+
+</section>
+
+
+<section class="card stats">
+
+  <div class="stat">
+    <span class="statIcon">⏱️</span>
+    <strong id="sessionTime">00:00</strong>
+    <small>SESSION</small>
+  </div>
+
+  <div class="stat">
+    <span class="statIcon">👁️</span>
+    <strong id="blinkCount">0</strong>
+    <small>BLINKS</small>
+  </div>
+
+  <div class="stat">
+    <span class="statIcon">😴</span>
+    <strong id="drowsyEvents">0</strong>
+    <small>DROWSY EVENTS</small>
+  </div>
+
+  <div class="stat">
+    <span class="statIcon">🔔</span>
+    <strong id="alarmCount">0</strong>
+    <small>ALARMS</small>
+  </div>
+
+  <div class="stat">
+    <span class="statIcon">🎯</span>
+    <strong id="focusScore">100%</strong>
+    <small>FOCUS</small>
+  </div>
+
+</section>
+
+
+<section class="card calibration">
+
+  <div class="head">
+
+    <div>
+      <h2>🎯 Personal Calibration</h2>
+      <small>Learning your normal facial behavior</small>
+    </div>
+
+    <strong id="calibrationState">Waiting</strong>
+
+  </div>
+
+  <div class="calBar">
+    <div id="calFill" class="calFill"></div>
+  </div>
+
+  <div id="calText" class="calText">
+    Start a session to begin calibration.
+  </div>
+
+</section>
+
+
+<section class="card">
+
+  <div class="head">
+
+    <div>
+      <h2>📋 Activity Log</h2>
+      <small>Important system events</small>
+    </div>
+
+    <button id="clearLog" class="clear">
+      CLEAR
+    </button>
+
+  </div>
+
+  <div id="log"></div>
+
+</section>
+
+
+<div class="privacy">
+
+  <div class="privacyIcon">🔒</div>
+
+  <div>
+    <strong>Privacy First</strong>
+
+    <p>
+      Camera frames are analyzed locally in your browser.
+      This application does not upload your camera stream
+      to a server.
+    </p>
+  </div>
+
+</div>
+
+
+<footer>
+  Study Guardian AI • Student Drowsiness Detection Project
+</footer>
+
+</div>
+
+
+<script>
+
+/* =========================================================
+   STUDY GUARDIAN AI
+   Current MediaPipe Face Landmarker architecture
+========================================================= */
+
+const $ = id => document.getElementById(id);
+
+
+/* UI */
+
+const video = $("video");
+const overlay = $("overlay");
+const ctx = overlay.getContext("2d");
+
+const startBtn = $("startBtn");
+const stopBtn = $("stopBtn");
+
+const cameraOff = $("cameraOff");
+const cameraState = $("cameraState");
+const facePill = $("facePill");
+
+const errorBox = $("error");
+
+const statusCircle = $("statusCircle");
+const statusIcon = $("statusIcon");
+const statusTitle = $("statusTitle");
+const statusText = $("statusText");
+
+const eyeValue = $("eyeValue");
+const eyeFill = $("eyeFill");
+
+const riskValue = $("riskValue");
+const riskFill = $("riskFill");
+
+const eyeState = $("eyeState");
+const headPose = $("headPose");
+const pitchValue = $("pitchValue");
+const yawValue = $("yawValue");
+const confidence = $("confidence");
+
+const sessionTime = $("sessionTime");
+const blinkCount = $("blinkCount");
+const drowsyEvents = $("drowsyEvents");
+const alarmCount = $("alarmCount");
+const focusScore = $("focusScore");
+
+const calibrationState = $("calibrationState");
+const calFill = $("calFill");
+const calText = $("calText");
+
+const logBox = $("log");
+
+
+/* SYSTEM */
+
+let landmarker = null;
+let stream = null;
+
+let running = false;
+let processing = false;
+
+let sessionStart = 0;
+let timer = null;
+
+let calibrationStart = 0;
+let calibrationComplete = false;
+let calibrationSamples = [];
+
+let baselineEAR = 0;
+let eyeClosedThreshold = 0;
+let eyeVeryClosedThreshold = 0;
+
+let lastVideoTime = -1;
+
+let eyeClosedSince = null;
+let warningTriggered = false;
+let alarmTriggered = false;
+
+let blinkStarted = null;
+let lastBlinkTime = 0;
+
+let risk = 0;
+
+let lastAnalysisTime = performance.now();
+
+let drowsySeconds = 0;
+
+let wakeLock = null;
+
+let stats = {
+  blinks:0,
+  events:0,
+  alarms:0
+};
+
+
+/* =========================================================
+   AUDIO
+========================================================= */
+
+let audioContext = null;
+
+function getAudio(){
+
+  if(!audioContext){
+
+    const AC =
+      window.AudioContext ||
+      window.webkitAudioContext;
+
+    if(!AC) return null;
+
+    audioContext = new AC();
+
+  }
+
+  if(audioContext.state === "suspended"){
+    audioContext.resume();
+  }
+
+  return audioContext;
+}
+
+
+function tone(
+  frequency,
+  duration,
+  volume=.25
+){
+
+  const ac = getAudio();
+
+  if(!ac) return;
+
+  const oscillator =
+    ac.createOscillator();
+
+  const gain =
+    ac.createGain();
+
+  oscillator.type = "square";
+  oscillator.frequency.value = frequency;
+
+  gain.gain.setValueAtTime(
+    0,
+    ac.currentTime
+  );
+
+  gain.gain.linearRampToValueAtTime(
+    volume,
+    ac.currentTime+.02
+  );
+
+  gain.gain.linearRampToValueAtTime(
+    0,
+    ac.currentTime+duration
+  );
+
+  oscillator.connect(gain);
+  gain.connect(ac.destination);
+
+  oscillator.start();
+
+  oscillator.stop(
+    ac.currentTime+duration
+  );
+
+}
+
+
+function warningSound(){
+
+  tone(620,.18,.12);
+
+}
+
+
+function alarm(){
+
+  stats.alarms++;
+
+  alarmCount.textContent =
+    stats.alarms;
+
+  addLog(
+    "🔔 <b>CRITICAL ALERT:</b> sustained drowsiness detected."
+  );
+
+  tone(900,.3,.35);
+
+  setTimeout(
+    ()=>tone(650,.3,.35),
+    350
+  );
+
+  setTimeout(
+    ()=>tone(900,.3,.35),
+    700
+  );
+
+  if(
+    navigator.vibrate
+  ){
+
+    navigator.vibrate([
+      300,
+      150,
+      300,
+      150,
+      700
+    ]);
+
+  }
+
+}
+
+
+/* =========================================================
+   LOG
+========================================================= */
+
+function addLog(text){
+
+  const item =
+    document.createElement("div");
+
+  item.className =
+    "logItem";
+
+  item.innerHTML =
+    `<span style="color:#5f7389">
+      ${new Date().toLocaleTimeString()}
+    </span> — ${text}`;
+
+  logBox.prepend(item);
+
+  while(
+    logBox.children.length>30
+  ){
+
+    logBox.lastElementChild.remove();
+
+  }
+
+}
+
+
+$("clearLog").onclick =
+function(){
+
+  logBox.innerHTML = "";
+
+  addLog("System log cleared.");
+
+};
+
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+function setStatus(
+  type,
+  icon,
+  title,
+  text
+){
+
+  statusCircle.className =
+    "statusCircle "+type;
+
+  statusIcon.textContent =
+    icon;
+
+  statusTitle.textContent =
+    title;
+
+  statusText.textContent =
+    text;
+
+}
+
+
+/* =========================================================
+   CAMERA
+========================================================= */
+
+async function startCamera(){
+
+  if(
+    !navigator.mediaDevices ||
+    !navigator.mediaDevices.getUserMedia
+  ){
+
+    throw new Error(
+      "Camera API unavailable. Open this project through HTTPS GitHub Pages."
+    );
+
+  }
+
+
+  /*
+    First try ideal constraints.
+    If a phone/browser rejects them,
+    fall back to the simplest camera request.
+  */
+
+  try{
+
+    stream =
+      await navigator.mediaDevices.getUserMedia({
+
+        audio:false,
+
+        video:{
+          facingMode:{
+            ideal:"user"
+          },
+
+          width:{
+            ideal:1280
+          },
+
+          height:{
+            ideal:720
+          },
+
+          frameRate:{
+            ideal:24,
+            max:30
+          }
+
+        }
+
+      });
+
+  }catch(firstError){
+
+    stream =
+      await navigator.mediaDevices.getUserMedia({
+
+        audio:false,
+
+        video:true
+
+      });
+
+  }
+
+
+  video.srcObject =
+    stream;
+
+  await video.play();
+
+  cameraOff.style.display =
+    "none";
+
+  cameraState.textContent =
+    "Camera active";
+
+  addLog(
+    "📷 Camera activated."
+  );
+
+}
+
+
+/* =========================================================
+   CAMERA STOP
+========================================================= */
+
+function stopCamera(){
+
+  if(stream){
+
+    stream
+      .getTracks()
+      .forEach(track=>track.stop());
+
+    stream=null;
+
+  }
+
+  video.srcObject=null;
+
+  cameraOff.style.display =
+    "flex";
+
+  cameraState.textContent =
+    "Camera inactive";
+
+  facePill.className =
+    "pill";
+
+  facePill.textContent =
+    "● FACE OFF";
+
+}
+
+
+/* =========================================================
+   WAKE LOCK
+========================================================= */
+
+async function requestWakeLock(){
+
+  try{
+
+    if(
+      "wakeLock" in navigator
+    ){
+
+      wakeLock =
+        await navigator.wakeLock.request(
+          "screen"
+        );
+
+    }
+
+  }catch(e){
+
+    console.log(
+      "Wake Lock unavailable"
+    );
+
+  }
+
+}
+
+
+async function releaseWakeLock(){
+
+  try{
+
+    if(wakeLock){
+
+      await wakeLock.release();
+
+      wakeLock=null;
+
+    }
+
+  }catch(e){}
+
+}
+
+
+/* =========================================================
+   FACE LANDMARK GEOMETRY
+========================================================= */
+
+function distance(a,b){
+
+  const dx =
+    a.x-b.x;
+
+  const dy =
+    a.y-b.y;
+
+  return Math.sqrt(
+    dx*dx+dy*dy
+  );
+
+}
+
+
+function EAR(points){
+
+  const vertical1 =
+    distance(points[1],points[5]);
+
+  const vertical2 =
+    distance(points[2],points[4]);
+
+  const horizontal =
+    distance(points[0],points[3]);
+
+  if(horizontal===0)
+    return 0;
+
+  return (
+    vertical1+vertical2
+  )/
+  (
+    2*horizontal
+  );
+
+}
+
+
+/*
+  MediaPipe landmark indices.
+*/
+
+function getEyeData(l){
+
+  const left = [
+    l[362],
+    l[385],
+    l[387],
+    l[263],
+    l[373],
+    l[380]
+  ];
+
+  const right = [
+    l[33],
+    l[160],
+    l[158],
+    l[133],
+    l[153],
+    l[144]
+  ];
+
+  return {
+    left,
+    right,
+    leftEAR:EAR(left),
+    rightEAR:EAR(right)
+  };
+
+}
+
+
+/* =========================================================
+   BLENDSHAPE
+========================================================= */
+
+function getBlendshape(
+  result,
+  name
+){
+
+  if(
+    !result.faceBlendshapes ||
+    !result.faceBlendshapes.length
+  ){
+
+    return 0;
+
+  }
+
+  const categories =
+    result.faceBlendshapes[0].categories;
+
+  const found =
+    categories.find(
+      c=>c.categoryName===name
+    );
+
+  return found
+    ? found.score
+    : 0;
+
+}
+
+
+/* =========================================================
+   HEAD POSE
+========================================================= */
+
+/*
+  Estimate head orientation from
+  stable facial landmark geometry.
+
+  This is intentionally smoothed and
+  combined with other signals rather than
+  treating one frame as truth.
+*/
+
+function estimateHeadPose(l){
+
+  /*
+    Coordinates:
+    1 = nose
+    152 = chin
+    33 / 263 = eye corners
+    234 / 454 = cheek sides
+  */
+
+  const nose = l[1];
+
+  const chin = l[152];
+
+  const leftEye = l[33];
+
+  const rightEye = l[263];
+
+  const leftSide = l[234];
+
+  const rightSide = l[454];
+
+
+  const faceWidth =
+    Math.max(
+      .001,
+      distance(
+        leftSide,
+        rightSide
+      )
+    );
+
+
+  const eyeCenter = {
+    x:(
+      leftEye.x+
+      rightEye.x
+    )/2,
+
+    y:(
+      leftEye.y+
+      rightEye.y
+    )/2
+  };
+
+
+  const verticalFace =
+    Math.max(
+      .001,
+      distance(
+        eyeCenter,
+        chin
+      )
+    );
+
+
+  /*
+    YAW:
+    Nose position relative to
+    eye center.
+  */
+
+  const yawNormalized =
+    (
+      nose.x-eyeCenter.x
+    )/
+    faceWidth;
+
+
+  let yaw =
+    yawNormalized*90;
+
+
+  /*
+    PITCH:
+    Nose/chin geometry.
+    Positive means head moving down.
+  */
+
+  const noseVertical =
+    (
+      nose.y-eyeCenter.y
+    )/
+    verticalFace;
+
+
+  let pitch =
+    (
+      noseVertical-.38
+    )*110;
+
+
+  /*
+    ROLL:
+    angle of eye line.
+  */
+
+  let roll =
+    Math.atan2(
+      rightEye.y-leftEye.y,
+      rightEye.x-leftEye.x
+    )*
+    180/
+    Math.PI;
+
+
+  yaw =
+    Math.max(
+      -60,
+      Math.min(60,yaw)
+    );
+
+  pitch =
+    Math.max(
+      -60,
+      Math.min(60,pitch)
+    );
+
+  roll =
+    Math.max(
+      -45,
+      Math.min(45,roll)
+    );
+
+
+  return {
+    yaw,
+    pitch,
+    roll
+  };
+
+}
+
+
+/* =========================================================
+   DRAW FACE
+========================================================= */
+
+function drawFace(landmarks){
+
+  const width =
+    overlay.width =
+    video.videoWidth;
+
+  const height =
+    overlay.height =
+    video.videoHeight;
+
+
+  ctx.clearRect(
+    0,
+    0,
+    width,
+    height
+  );
+
+
+  if(!landmarks)
+    return;
+
+
+  /*
+    Draw key points only.
+    The video itself is mirrored,
+    therefore x is mirrored.
+  */
+
+  const points = [
+    1,33,263,362,385,387,
+    373,380,133,160,158,
+    153,144,152,234,454
+  ];
+
+
+  ctx.fillStyle =
+    "#38bdf8";
+
+
+  for(
+    const index of points
+  ){
+
+    const p =
+      landmarks[index];
+
+    if(!p) continue;
+
+    const x =
+      (1-p.x)*width;
+
+    const y =
+      p.y*height;
+
+    ctx.beginPath();
+
+    ctx.arc(
+      x,
+      y,
+      3,
+      0,
+      Math.PI*2
+    );
+
+    ctx.fill();
+
+  }
+
+}
+
+
+/* =========================================================
+   CALIBRATION
+========================================================= */
+
+function collectCalibration(
+  ear
+){
+
+  if(
+    ear>.16 &&
+    ear<.50
+  ){
+
+    calibrationSamples.push(
+      ear
+    );
+
+  }
+
+}
+
+
+function finishCalibration(){
+
+  if(
+    calibrationSamples.length<15
+  ){
+
+    /*
+      Not enough good samples.
+      Use a conservative default.
+    */
+
+    baselineEAR=.28;
+
+  }else{
+
+    const sorted =
+      [...calibrationSamples]
+      .sort((a,b)=>a-b);
+
+
+    const trim =
+      Math.floor(
+        sorted.length*.1
+      );
+
+
+    const useful =
+      sorted.slice(
+        trim,
+        sorted.length-trim
+      );
+
+
+    baselineEAR =
+      useful.reduce(
+        (a,b)=>a+b,
+        0
+      )/
+      useful.length;
+
+  }
+
+
+  /*
+    Personalized thresholds.
+
+    These are intentionally not extremely
+    sensitive to avoid alarms on normal blinks.
+  */
+
+  eyeClosedThreshold =
+    Math.max(
+      .145,
+      baselineEAR*.67
+    );
+
+
+  eyeVeryClosedThreshold =
+    Math.max(
+      .115,
+      baselineEAR*.52
+    );
+
+
+  calibrationComplete=true;
+
+  calFill.style.width="100%";
+
+  calibrationState.textContent =
+    "READY ✓";
+
+  calText.textContent =
+    "Calibration complete. Personalized thresholds are active.";
+
+  addLog(
+    `🎯 Calibration complete. Baseline eye ratio: ${baselineEAR.toFixed(3)}`
+  );
+
+}
+
+
+/* =========================================================
+   MAIN ANALYSIS
+========================================================= */
+
+function analyze(result){
+
+  if(
+    !result.faceLandmarks ||
+    result.faceLandmarks.length===0
+  ){
+
+    facePill.className =
+      "pill bad";
+
+    facePill.textContent =
+      "● NO FACE";
+
+    eyeValue.textContent =
+      "--";
+
+    confidence.textContent =
+      "--";
+
+    eyeState.textContent =
+      "Unknown";
+
+    headPose.textContent =
+      "Unknown";
+
+    setStatus(
+      "warn",
+      "👤",
+      "NO FACE",
+      "Move your face into the camera view."
+    );
+
+    return;
+
+  }
+
+
+  const l =
+    result.faceLandmarks[0];
+
+
+  facePill.className =
+    "pill good";
+
+  facePill.textContent =
+    "● FACE DETECTED";
+
+
+  drawFace(l);
+
+
+  /*
+    Eye measurements
+  */
+
+  const eyes =
+    getEyeData(l);
+
+
+  const ear =
+    (
+      eyes.leftEAR+
+      eyes.rightEAR
+    )/2;
+
+
+  /*
+    Blendshape eye blink scores.
+    MediaPipe's Face Landmarker outputs
+    facial blendshapes when enabled.
+  */
+
+  const blinkLeft =
+    getBlendshape(
+      result,
+      "eyeBlinkLeft"
+    );
+
+  const blinkRight =
+    getBlendshape(
+      result,
+      "eyeBlinkRight"
+    );
+
+
+  const blinkScore =
+    (
+      blinkLeft+
+      blinkRight
+    )/2;
+
+
+  /*
+    Calibration
+  */
+
+  if(!calibrationComplete){
+
+    const elapsed =
+      performance.now()-
+      calibrationStart;
+
+
+    collectCalibration(ear);
+
+
+    const percentage =
+      Math.min(
+        100,
+        elapsed/100
+      );
+
+
+    calFill.style.width =
+      percentage+"%";
+
+
+    const seconds =
+      Math.max(
+        0,
+        Math.ceil(
+          (10000-elapsed)/1000
+        )
+      );
+
+
+    calText.textContent =
+      `Look naturally at the screen. ${seconds}s remaining.`;
+
+
+    calibrationState.textContent =
+      "LEARNING";
+
+
+    if(elapsed>=10000){
+
+      finishCalibration();
+
+    }
+
+    return;
+
+  }
+
+
+  /*
+    Eye openness.
+  */
+
+  let openness =
+    (
+      ear/
+      baselineEAR
+    )*100;
+
+
+  openness =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        openness
+      )
+    );
+
+
+  eyeValue.textContent =
+    Math.round(openness)+"%";
+
+
+  eyeFill.style.width =
+    openness+"%";
+
+
+  /*
+    Eye state.
+  */
+
+  const eyesClosed =
+    ear<eyeClosedThreshold ||
+    blinkScore>.55;
+
+
+  const eyesVeryClosed =
+    ear<eyeVeryClosedThreshold ||
+    blinkScore>.78;
+
+
+  if(eyesVeryClosed){
+
+    eyeState.textContent =
+      "VERY CLOSED";
+
+  }else if(eyesClosed){
+
+    eyeState.textContent =
+      "CLOSED";
+
+  }else{
+
+    eyeState.textContent =
+      "OPEN";
+
+  }
+
+
+  /*
+    Head pose.
+  */
+
+  const pose =
+    estimateHeadPose(l);
+
+
+  pitchValue.textContent =
+    `${pose.pitch.toFixed(0)}°`;
+
+  yawValue.textContent =
+    `${pose.yaw.toFixed(0)}°`;
+
+
+  let poseText =
+    "Normal";
+
+
+  if(
+    pose.pitch>22
+  ){
+
+    poseText =
+      "HEAD DOWN";
+
+  }else if(
+    Math.abs(pose.yaw)>28
+  ){
+
+    poseText =
+      "LOOKING SIDE";
+
+  }else if(
+    Math.abs(pose.roll)>25
+  ){
+
+    poseText =
+      "TILTED";
+
+  }
+
+
+  headPose.textContent =
+    poseText;
+
+
+  /*
+    Blink detection.
+
+    Short closures are treated as blinks,
+    long closures are treated as possible
+    drowsiness.
+  */
+
+  const now =
+    performance.now();
+
+
+  if(eyesClosed){
+
+    if(!blinkStarted){
+
+      blinkStarted =
+        now;
+
+    }
+
+  }else{
+
+    if(blinkStarted){
+
+      const duration =
+        now-blinkStarted;
+
+
+      if(
+        duration>=70 &&
+        duration<=650 &&
+        now-lastBlinkTime>250
+      ){
+
+        stats.blinks++;
+
+        blinkCount.textContent =
+          stats.blinks;
+
+        lastBlinkTime =
+          now;
+
+      }
+
+    }
+
+    blinkStarted=null;
+
+  }
+
+
+  /*
+    Temporal closure duration.
+  */
+
+  if(eyesClosed){
+
+    if(!eyeClosedSince){
+
+      eyeClosedSince =
+        now;
+
+    }
+
+  }else{
+
+    eyeClosedSince=null;
+
+    warningTriggered=false;
+
+    alarmTriggered=false;
+
+  }
+
+
+  let closureSeconds=0;
+
+
+  if(eyeClosedSince){
+
+    closureSeconds =
+      (
+        now-eyeClosedSince
+      )/1000;
+
+  }
+
+
+  /*
+    MULTI-SIGNAL DROWSINESS ENGINE
+  */
+
+  let targetRisk=0;
+
+
+  /*
+    Eye closure duration
+  */
+
+  if(
+    closureSeconds>.35
+  ){
+
+    targetRisk +=
+      Math.min(
+        45,
+        closureSeconds*15
+      );
+
+  }
+
+
+  /*
+    Very closed eyes
+  */
+
+  if(eyesVeryClosed){
+
+    targetRisk+=25;
+
+  }
+
+
+  /*
+    Head down
+  */
+
+  if(
+    pose.pitch>18
+  ){
+
+    targetRisk+=18;
+
+  }
+
+
+  /*
+    Strong blink blendshape
+  */
+
+  if(
+    blinkScore>.65
+  ){
+
+    targetRisk+=10;
+
+  }
+
+
+  /*
+    Sideways head shouldn't itself
+    trigger sleep.
+  */
+
+  if(
+    Math.abs(pose.yaw)>38
+  ){
+
+    targetRisk-=8;
+
+  }
+
+
+  /*
+    Clamp.
+  */
+
+  targetRisk =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        targetRisk
+      )
+    );
+
+
+  /*
+    Smooth temporal score.
+
+    This prevents one bad frame from
+    instantly triggering an alarm.
+  */
+
+  risk =
+    risk*.82+
+    targetRisk*.18;
+
+
+  risk =
+    Math.max(
+      0,
+      Math.min(
+        100,
+        risk
+      )
+    );
+
+
+  riskValue.textContent =
+    Math.round(risk)+"%";
+
+  riskFill.style.width =
+    risk+"%";
+
+
+  /*
+    Confidence estimate.
+
+    This is not ML probability.
+    It describes whether the face geometry
+    is sufficiently stable for analysis.
+  */
+
+  let conf=100;
+
+  if(
+    Math.abs(pose.yaw)>40
+  ) conf-=25;
+
+  if(
+    Math.abs(pose.roll)>30
+  ) conf-=15;
+
+  if(
+    ear<.10 ||
+    ear>.50
+  ) conf-=20;
+
+  conf =
+    Math.max(
+      35,
+      Math.min(
+        100,
+        conf
+      )
+    );
+
+
+  confidence.textContent =
+    Math.round(conf)+"%";
+
+
+  /*
+    WARNING.
+  */
+
+  if(
+    closureSeconds>=.8 &&
+    risk>=45 &&
+    !warningTriggered
+  ){
+
+    warningTriggered=true;
+
+    warningSound();
+
+    addLog(
+      "⚠️ Possible drowsiness detected."
+    );
+
+  }
+
+
+  /*
+    CRITICAL ALARM.
+
+    Requires prolonged closure AND
+    strong combined evidence.
+
+    This avoids treating a normal blink
+    as sleep.
+  */
+
+  const critical =
+    closureSeconds>=1.8 &&
+    risk>=65;
+
+
+  if(
+    critical &&
+    !alarmTriggered
+  ){
+
+    alarmTriggered=true;
+
+    stats.events++;
+
+    drowsyEvents.textContent =
+      stats.events;
+
+    alarm();
+
+  }
+
+
+  /*
+    Main UI state.
+  */
+
+  if(risk>=70){
+
+    setStatus(
+      "danger",
+      "🔔",
+      "WAKE UP",
+      "High-confidence drowsiness pattern detected."
+    );
+
+  }else if(risk>=45){
+
+    setStatus(
+      "warn",
+      "⚠️",
+      "DROWSY",
+      "Your eye and head signals indicate possible fatigue."
+    );
+
+  }else if(eyesClosed){
+
+    setStatus(
+      "warn",
+      "👁️",
+      "EYES CLOSING",
+      "Keep your eyes open and maintain your study posture."
+    );
+
+  }else if(
+    pose.pitch>22
+  ){
+
+    setStatus(
+      "warn",
+      "📖",
+      "HEAD DOWN",
+      "Your head is lowered. Sit upright if you are getting tired."
+    );
+
+  }else{
+
+    setStatus(
+      "",
+      "🎯",
+      "FOCUSED",
+      "No significant drowsiness pattern detected."
+    );
+
+  }
+
+}
+
+
+/* =========================================================
+   PROCESS VIDEO
+========================================================= */
+
+function processVideo(){
+
+  if(
+    !running ||
+    !landmarker ||
+    video.readyState<2
+  ){
+
+    requestAnimationFrame(
+      processVideo
+    );
+
+    return;
+
+  }
+
+
+  /*
+    Don't process the same video frame twice.
+  */
+
+  if(
+    video.currentTime!==lastVideoTime &&
+    !processing
+  ){
+
+    processing=true;
+
+    try{
+
+      const timestamp =
+        performance.now();
+
+
+      const result =
+        landmarker.detectForVideo(
+          video,
+          timestamp
+        );
+
+
+      analyze(result);
+
+      lastVideoTime =
+        video.currentTime;
+
+    }catch(error){
+
+      console.error(
+        "Detection error:",
+        error
+      );
+
+    }finally{
+
+      processing=false;
+
+    }
+
+  }
+
+
+  requestAnimationFrame(
+    processVideo
+  );
+
+}
+
+
+/* =========================================================
+   LOAD AI
+========================================================= */
+
+async function loadAI(){
+
+  if(
+    !window.FaceLandmarker ||
+    !window.FilesetResolver
+  ){
+
+    await new Promise(
+      resolve=>{
+        window.addEventListener(
+          "mediapipe-ready",
+          resolve,
+          {once:true}
+        );
+      }
+    );
+
+  }
+
+
+  const vision =
+    await window.FilesetResolver
+      .forVisionTasks(
+        "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm"
+      );
+
+
+  /*
+    Google MediaPipe Face Landmarker
+    model asset.
+  */
+
+  const modelUrl =
+    "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+
+
+  landmarker =
+    await window.FaceLandmarker
+      .createFromOptions(
+        vision,
+        {
+
+          baseOptions:{
+            modelAssetPath:modelUrl
+          },
+
+          runningMode:"VIDEO",
+
+          numFaces:1,
+
+          minFaceDetectionConfidence:.55,
+
+          minFacePresenceConfidence:.55,
+
+          minTrackingConfidence:.55,
+
+          outputFaceBlendshapes:true,
+
+          outputFacialTransformationMatrixes:true
+
+        }
+      );
+
+
+  addLog(
+    "🧠 Face Landmarker AI initialized."
+  );
+
+}
+
+
+/* =========================================================
+   SESSION TIMER
+========================================================= */
+
+function updateTimer(){
+
+  if(!sessionStart)
+    return;
+
+
+  const seconds =
+    Math.floor(
+      (Date.now()-sessionStart)/1000
+    );
+
+
+  const minutes =
+    Math.floor(
+      seconds/60
+    );
+
+
+  const remaining =
+    seconds%60;
+
+
+  sessionTime.textContent =
+    String(minutes).padStart(2,"0")+
+    ":"+
+    String(remaining).padStart(2,"0");
+
+
+  /*
+    Focus score.
+
+    It is a session indicator, not a
+    medical measurement.
+  */
+
+  const focus =
+    seconds>10
+    ?
+    Math.max(
+      0,
+      100-
+      (
+        drowsySeconds/
+        seconds
+      )*100
+    )
+    :
+    100;
+
+
+  focusScore.textContent =
+    Math.round(focus)+"%";
+
+}
+
+
+/* =========================================================
+   START SESSION
+========================================================= */
+
+startBtn.onclick =
+async function(){
+
+  errorBox.style.display =
+    "none";
+
+  startBtn.disabled=true;
+
+  try{
+
+    /*
+      User gesture unlocks audio.
+    */
+
+    getAudio();
+
+
+    setStatus(
+      "warn",
+      "📷",
+      "CAMERA",
+      "Requesting camera permission..."
+    );
+
+
+    /*
+      CAMERA FIRST.
+      This guarantees that a model-loading
+      failure doesn't make the button appear dead.
+    */
+
+    await startCamera();
+
+
+    setStatus(
+      "warn",
+      "🧠",
+      "LOADING AI",
+      "Initializing facial analysis..."
+    );
+
+
+    await loadAI();
+
+
+    running=true;
+
+    sessionStart =
+      Date.now();
+
+    calibrationStart =
+      performance.now();
+
+    calibrationComplete=false;
+
+    calibrationSamples=[];
+
+    baselineEAR=0;
+
+    eyeClosedThreshold=0;
+
+    eyeVeryClosedThreshold=0;
+
+    eyeClosedSince=null;
+
+    warningTriggered=false;
+
+    alarmTriggered=false;
+
+    blinkStarted=null;
+
+    lastBlinkTime=0;
+
+    risk=0;
+
+    lastVideoTime=-1;
+
+    drowsySeconds=0;
+
+    stats={
+      blinks:0,
+      events:0,
+      alarms:0
+    };
+
+
+    blinkCount.textContent="0";
+    drowsyEvents.textContent="0";
+    alarmCount.textContent="0";
+
+    sessionTime.textContent="00:00";
+
+    focusScore.textContent="100%";
+
+    calFill.style.width="0%";
+
+    calibrationState.textContent =
+      "LEARNING";
+
+    calText.textContent =
+      "Look naturally at the screen for 10 seconds.";
+
+
+    stopBtn.disabled=false;
+
+    cameraState.textContent =
+      "AI monitoring active";
+
+
+    await requestWakeLock();
+
+
+    addLog(
+      "🚀 <b>Study session started.</b>"
+    );
+
+
+    setStatus(
+      "warn",
+      "🎯",
+      "CALIBRATING",
+      "Look naturally at the screen. Calibration takes 10 seconds."
+    );
+
+
+    if(timer){
+      clearInterval(timer);
+    }
+
+    timer =
+      setInterval(
+        updateTimer,
+        1000
+      );
+
+
+    processVideo();
+
+
+  }catch(error){
+
+    console.error(error);
+
+
+    errorBox.textContent =
+      `Startup failed: ${error.name || "Error"} — ${error.message || error}`;
+
+
+    errorBox.style.display =
+      "block";
+
+
+    addLog(
+      `❌ Startup failed: ${error.message || error}`
+    );
+
+
+    stopCamera();
+
+    releaseWakeLock();
+
+
+    setStatus(
+      "danger",
+      "❌",
+      "START FAILED",
+      "Read the error message below."
+    );
+
+
+    startBtn.disabled=false;
+
+  }
+
+};
+
+
+/* =========================================================
+   STOP SESSION
+========================================================= */
+
+stopBtn.onclick =
+async function(){
+
+  running=false;
+
+  if(timer){
+
+    clearInterval(timer);
+
+    timer=null;
+
+  }
+
+
+  stopCamera();
+
+  await releaseWakeLock();
+
+
+  if(landmarker){
+
+    try{
+
+      landmarker.close();
+
+    }catch(e){}
+
+    landmarker=null;
+
+  }
+
+
+  stopBtn.disabled=true;
+
+  startBtn.disabled=false;
+
+
+  setStatus(
+    "",
+    "🎯",
+    "READY",
+    "Press Start Study Session to begin again."
+  );
+
+
+  addLog(
+    "■ Study session stopped."
+  );
+
+};
+
+
+/* =========================================================
+   VISIBILITY / MOBILE
+========================================================= */
+
+document.addEventListener(
+  "visibilitychange",
+  async()=>{
+
+    if(
+      document.visibilityState==="visible" &&
+      running
+    ){
+
+      await requestWakeLock();
+
+    }
+
+  }
+);
+
+
+/* =========================================================
+   PAGE ERROR PROTECTION
+========================================================= */
+
+window.addEventListener(
+  "error",
+  event=>{
+
+    console.error(
+      "Page error:",
+      event.error
+    );
+
+  }
+);
+
+
+window.addEventListener(
+  "unhandledrejection",
+  event=>{
+
+    console.error(
+      "Promise error:",
+      event.reason
+    );
+
+  }
+);
+
+
+/* =========================================================
+   INITIAL LOG
+========================================================= */
+
+addLog(
+  "System ready. Camera and AI remain OFF until you press Start."
+);
+
+</script>
+
+</body>
+</html>
